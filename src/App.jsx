@@ -700,6 +700,139 @@ Be concise, data-driven, action-oriented. Use bullets. Reference owners by name.
   );
 }
 
+// ─── Glossary ─────────────────────────────────────────────────────────────────
+const GLOSSARY_DATA = {
+  shared: {
+    title: "Status colour coding",
+    items: [
+      { dot: A.sageGreen,      bg: "#E6F9EE", color: "#006B2E", label: "On Track",    desc: "Progress is aligned with or ahead of the timeline. No intervention needed." },
+      { dot: A.goldDeep,       bg: "#FEF9E7", color: "#7A5C00", label: "At Risk",     desc: "Progress is falling behind. Action is needed to prevent missing the target." },
+      { dot: A.copper,         bg: "#FBF0EA", color: "#7A3A18", label: "Off Track",   desc: "Significantly behind target. Recovery plan is required immediately." },
+      { dot: A.invernessGreen, bg: "#E8F9FD", color: "#00838A", label: "Completed",   desc: "Target has been fully achieved before or at the end of the quarter." },
+      { dot: A.gray400,        bg: A.gray200, color: A.gray700, label: "Not Started", desc: "No progress has been recorded yet for this key result." },
+    ],
+  },
+  dashboard: {
+    title: "Dashboard — what you're looking at",
+    items: [
+      { icon: "📊", label: "KPI cards (top row)",       desc: "A snapshot of all key results this quarter. The coloured top border matches the status it represents." },
+      { icon: "🍩", label: "Donut chart",               desc: "Each segment shows the proportion of KRs in that status. Larger segments = more KRs in that state." },
+      { icon: "📶", label: "Bar chart (by department)", desc: "Each bar = the average progress % for that department. Shorter bars need more attention." },
+      { icon: "⚠️", label: "Needs attention list",      desc: "The at-risk and off-track KRs with the lowest progress, ranked from worst to best." },
+      { icon: "🏢", label: "Department health table",   desc: "'At risk' column counts KRs that are At Risk or Off Track. 'Avg progress' uses the same colour coding as status badges." },
+      { icon: "🟡", label: "Gold bar (timeline)",       desc: "The gold fill in the header progress bar shows how much of the quarter has elapsed (71.6%)." },
+    ],
+  },
+  alignment: {
+    title: "Alignment — how to read this view",
+    items: [
+      { icon: "🔵", label: "Blue left border",          desc: "Each indented block represents a department contributing to that company KR. The border connects it visually to the parent." },
+      { icon: "📏", label: "Progress bar colour",       desc: "Same status colour coding as badges — green = on track, yellow = at risk, orange = off track, teal = completed." },
+      { icon: "🔢", label: "KRs · Depts counter",       desc: "Shows how many department KRs are linked to that company objective, and across how many departments." },
+      { icon: "▶",  label: "Expand arrow",              desc: "Click any company KR row to expand and see every department and individual KR supporting it." },
+    ],
+  },
+  checkins: {
+    title: "Check-ins — how it works",
+    items: [
+      { icon: "🟠", label: "No check-in (orange text)", desc: "This KR has never had a weekly update submitted. It should be prioritised for a check-in." },
+      { icon: "📅", label: "Date stamp",                desc: "Shows when the last check-in was submitted. Aim for at least once per week." },
+      { icon: "🚧", label: "Orange blocker text",       desc: "A blocker logged in the check-in form. Visible in the history to track whether it was resolved." },
+      { icon: "🔵", label: "Blue left border (update)", desc: "The latest check-in update is shown directly on the KR card for quick visibility without opening it." },
+      { icon: "⬆️", label: "Green trend arrow",        desc: "Week-on-week change is positive — progress increased since last check-in." },
+      { icon: "⬇️", label: "Orange trend arrow",       desc: "Week-on-week change is negative — progress decreased or a value worsened since last check-in." },
+    ],
+  },
+  list: {
+    title: "All KRs — what the numbers mean",
+    items: [
+      { icon: "→",  label: "Start → Target · now X",  desc: "Shows the baseline value, the goal, and the current measured value. Example: 17.8% → 20.0% · now 7.3%." },
+      { icon: "📈", label: "Week-on-week (WoW)",       desc: "The percentage change since last week. Green = improving, orange = declining." },
+      { icon: "▶",  label: "Click to expand",          desc: "Clicking a KR row reveals the full weekly update, the company KR it supports, and the department objective." },
+      { icon: "✏️", label: "Edit ↗ button",            desc: "Opens the edit form to update the current value, progress %, status, WoW change, and weekly notes." },
+      { icon: "🔵", label: "Blue border on expand",    desc: "The selected KR is highlighted with a blue border so you always know which one is open." },
+    ],
+  },
+};
+
+function Glossary({ currentView }) {
+  const [open, setOpen] = useState(false);
+  const shared = GLOSSARY_DATA.shared;
+  const page = GLOSSARY_DATA[currentView];
+
+  return (
+    <div style={{ marginTop: 40, borderTop: `1px solid ${A.gray300}`, paddingTop: 20 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: FONT, width: "100%" }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 700, color: A.gray500, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          📖 Colour & legend glossary
+        </span>
+        <div style={{ flex: 1, height: 1, background: A.gray300 }} />
+        <span style={{ fontSize: 11, color: A.gray400, fontFamily: FONT }}>{open ? "Hide ▲" : "Show ▼"}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+          {/* Status colour coding — always shown */}
+          <div style={{ background: A.white, border: `1px solid ${A.gray300}`, borderRadius: 12, padding: "18px 20px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: A.black, fontFamily: FONT, marginBottom: 14 }}>{shared.title}</div>
+            {shared.items.map(item => (
+              <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: item.bg, color: item.color, fontFamily: FONT, whiteSpace: "nowrap", flexShrink: 0, marginTop: 1 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: item.dot }} />
+                  {item.label}
+                </span>
+                <span style={{ fontSize: 12, color: A.gray700, fontFamily: FONT, lineHeight: 1.5 }}>{item.desc}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Page-specific legend */}
+          {page && (
+            <div style={{ background: A.white, border: `1px solid ${A.gray300}`, borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: A.black, fontFamily: FONT, marginBottom: 14 }}>{page.title}</div>
+              {page.items.map(item => (
+                <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: "center", lineHeight: "20px" }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: A.black, fontFamily: FONT, marginBottom: 2 }}>{item.label}</div>
+                    <div style={{ fontSize: 12, color: A.gray500, fontFamily: FONT, lineHeight: 1.5 }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Progress bar key — full width */}
+          <div style={{ gridColumn: "1 / -1", background: A.white, border: `1px solid ${A.gray300}`, borderRadius: 12, padding: "18px 20px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: A.black, fontFamily: FONT, marginBottom: 14 }}>Progress bars — colour reference</div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+              {[
+                { color: A.sageGreen,      label: "On Track — progressing as expected" },
+                { color: A.goldDeep,       label: "At Risk — falling behind" },
+                { color: A.copper,         label: "Off Track — significant gap to target" },
+                { color: A.invernessGreen, label: "Completed — target reached" },
+                { color: A.gray300,        label: "Empty bar — no progress recorded" },
+              ].map(b => (
+                <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 48, height: 6, borderRadius: 3, background: A.gray200, overflow: "hidden", flexShrink: 0 }}>
+                    <div style={{ width: b.color === A.gray300 ? "0%" : "65%", height: "100%", background: b.color, borderRadius: 3 }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: A.gray700, fontFamily: FONT }}>{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 const VIEWS = [
   { id:"dashboard", label:"Dashboard", icon:"📊" },
@@ -708,7 +841,80 @@ const VIEWS = [
   { id:"list",      label:"All KRs",   icon:"🎯" },
 ];
 
+const PASSWORD = "amenitiz2025";
+
+function PasswordGate({ onUnlock }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  function attempt() {
+    if (value === PASSWORD) {
+      sessionStorage.setItem("okr_unlocked", "1");
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setValue("");
+      setTimeout(() => setShake(false), 500);
+    }
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:`linear-gradient(135deg, ${A.blue} 0%, ${A.blueDark} 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:FONT }}>
+      <div style={{ animation: shake ? "shake 0.4s ease" : "none" }}>
+        <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }`}</style>
+        <div style={{ background:A.white, borderRadius:20, padding:"40px 44px", width:380, maxWidth:"90vw", boxShadow:"0 32px 80px rgba(0,0,0,0.25)", textAlign:"center" }}>
+
+          {/* Logo */}
+          <div style={{ marginBottom:28 }}>
+            <div style={{ width:56, height:56, background:A.blue, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+              <span style={{ color:A.white, fontSize:28, fontWeight:900 }}>A</span>
+            </div>
+            <div style={{ fontSize:20, fontWeight:900, color:A.black, letterSpacing:"-0.02em" }}>amenitiz</div>
+            <div style={{ fontSize:12, color:A.gray400, marginTop:4, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase" }}>OKR Tracker · Q1 2026</div>
+          </div>
+
+          <div style={{ fontSize:14, color:A.gray700, marginBottom:22, lineHeight:1.5 }}>
+            This tool is for internal use only.<br/>Enter the team password to continue.
+          </div>
+
+          <input
+            type="password"
+            value={value}
+            onChange={e=>{ setValue(e.target.value); setError(false); }}
+            onKeyDown={e=>e.key==="Enter"&&attempt()}
+            placeholder="Enter password"
+            autoFocus
+            style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`2px solid ${error?A.copper:A.gray300}`, fontSize:14, fontFamily:FONT, outline:"none", boxSizing:"border-box", textAlign:"center", letterSpacing:"0.1em", transition:"border-color 0.2s", marginBottom:8 }}
+          />
+
+          {error && (
+            <div style={{ fontSize:12, color:A.copper, fontWeight:600, marginBottom:10 }}>
+              Incorrect password. Please try again.
+            </div>
+          )}
+
+          <button
+            onClick={attempt}
+            style={{ width:"100%", padding:"12px", borderRadius:10, border:"none", background:A.blue, color:A.white, fontSize:14, fontWeight:700, fontFamily:FONT, cursor:"pointer", marginTop:4, transition:"opacity 0.15s" }}
+            onMouseOver={e=>e.target.style.opacity="0.88"}
+            onMouseOut={e=>e.target.style.opacity="1"}
+          >
+            Enter →
+          </button>
+
+          <div style={{ fontSize:11, color:A.gray400, marginTop:18, fontFamily:FONT }}>
+            Need access? Contact your OKR champion.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [unlocked, setUnlocked] = useState(sessionStorage.getItem("okr_unlocked")==="1");
   const [okrs,setOkrs]=useState(INITIAL_OKR_DATA);
   const [view,setView]=useState("dashboard");
   const [editing,setEditing]=useState(null);
@@ -716,6 +922,8 @@ export default function App() {
   const [showApiPrompt,setShowApiPrompt]=useState(false);
   const [apiKeyInput,setApiKeyInput]=useState("");
   const [checkins,setCheckins]=useState({});
+
+  if (!unlocked) return <PasswordGate onUnlock={()=>setUnlocked(true)} />;
 
   function saveEdit(form) { setOkrs(prev=>prev.map(o=>o.id===editing.id?{...o,...form}:o)); setEditing(null); }
 
@@ -770,6 +978,7 @@ export default function App() {
         {view==="alignment" && <AlignmentView okrs={okrs}/>}
         {view==="checkins"  && <CheckIns okrs={okrs} checkins={checkins} onAddCheckin={addCheckin}/>}
         {view==="list"      && <KRList okrs={okrs} onEdit={setEditing}/>}
+        <Glossary currentView={view} />
       </main>
 
       {editing&&<EditModal okr={editing} onSave={saveEdit} onClose={()=>setEditing(null)}/>}
