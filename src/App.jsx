@@ -155,12 +155,19 @@ function Dashboard({ okrs }) {
   const offTrack=okrs.filter(o=>o.status==="Off Track").length;
   const completed=okrs.filter(o=>o.status==="Completed").length;
 
+  // Priority: Off Track (worst) > At Risk > On Track > Completed (only if ALL done)
+  const worstStatus = (items) => {
+    if (items.some(o=>o.status==="Off Track")) return "Off Track";
+    if (items.some(o=>o.status==="At Risk"))   return "At Risk";
+    if (items.every(o=>o.status==="Completed")) return "Completed";
+    return "On Track";
+  };
+
   const deptData=DEPARTMENTS.map(d=>{
     const items=okrs.filter(o=>o.dept===d);
     if(!items.length) return null;
     const avg=Math.round(items.reduce((a,o)=>a+o.pct,0)/items.length);
-    const worst=items.find(o=>o.status==="Off Track")?"Off Track":items.find(o=>o.status==="At Risk")?"At Risk":items.find(o=>o.status==="Completed")?"Completed":"On Track";
-    return { label:d.length>9?d.slice(0,8)+"…":d, fullName:d, value:avg, status:worst, count:items.length, atRisk:items.filter(o=>o.status==="At Risk"||o.status==="Off Track").length };
+    return { label:d.length>9?d.slice(0,8)+"…":d, fullName:d, value:avg, status:worstStatus(items), count:items.length, atRisk:items.filter(o=>o.status==="At Risk"||o.status==="Off Track").length };
   }).filter(Boolean);
 
   const atRiskList=[...okrs].filter(o=>o.status==="At Risk"||o.status==="Off Track").sort((a,b)=>a.pct-b.pct).slice(0,6);
@@ -177,8 +184,7 @@ function Dashboard({ okrs }) {
     const items=okrs.filter(o=>o.companyKR===ckr);
     if(!items.length) return null;
     const avg=Math.round(items.reduce((a,o)=>a+o.pct,0)/items.length);
-    const s=avg>=80?"Completed":avg>=50?"On Track":avg>=20?"At Risk":"Off Track";
-    return { fullLabel:ckr, avg, count:items.length, status:s };
+    return { fullLabel:ckr, avg, count:items.length, status:worstStatus(items) };
   }).filter(Boolean);
 
   return (
@@ -548,7 +554,7 @@ function AlignmentView({ okrs }) {
         const items=okrs.filter(o=>o.companyKR===ckr);
         if(!items.length) return null;
         const avg=Math.round(items.reduce((a,o)=>a+o.pct,0)/items.length);
-        const worst=items.find(o=>o.status==="Off Track")?"Off Track":items.find(o=>o.status==="At Risk")?"At Risk":avg>=100?"Completed":"On Track";
+        const worst=items.some(o=>o.status==="Off Track")?"Off Track":items.some(o=>o.status==="At Risk")?"At Risk":items.every(o=>o.status==="Completed")?"Completed":"On Track";
         const isOpen=selected===ckr;
         return (
           <div key={ckr} style={{ marginBottom:8 }}>
@@ -571,7 +577,7 @@ function AlignmentView({ okrs }) {
                 {[...new Set(items.map(o=>o.dept))].map(dept=>{
                   const dItems=items.filter(o=>o.dept===dept);
                   const dAvg=Math.round(dItems.reduce((a,o)=>a+o.pct,0)/dItems.length);
-                  const dStatus=dItems.find(o=>o.status==="Off Track")?"Off Track":dItems.find(o=>o.status==="At Risk")?"At Risk":dAvg>=100?"Completed":"On Track";
+                  const dStatus=dItems.some(o=>o.status==="Off Track")?"Off Track":dItems.some(o=>o.status==="At Risk")?"At Risk":dItems.every(o=>o.status==="Completed")?"Completed":"On Track";
                   return (
                     <div key={dept} style={{ background:A.gray100, borderRadius:8, padding:"10px 14px", borderLeft:`3px solid ${A.blue}` }}>
                       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
