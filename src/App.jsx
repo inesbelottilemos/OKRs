@@ -1136,6 +1136,233 @@ function NewKRForm({ onSave, onCancel, lbl, inp, depts, companyKRs, showDept, sh
 }
 
 
+// ─── Weekly Report ────────────────────────────────────────────────────────────
+function WeeklyReport({ okrs, checkins }) {
+  const today = new Date().toISOString().split("T")[0];
+  const [weekOf, setWeekOf] = useState(today);
+  const [deptFilter, setDeptFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [exported, setExported] = useState(false);
+
+  // Build report rows — one per KR
+  const rows = okrs
+    .filter(o => !deptFilter || o.dept === deptFilter)
+    .filter(o => !statusFilter || o.status === statusFilter)
+    .map(o => {
+      const krCheckins = checkins[o.id] || [];
+      const latest = krCheckins[krCheckins.length - 1];
+      const prev = krCheckins[krCheckins.length - 2];
+      return {
+        dept: o.dept,
+        objective: o.obj,
+        kr: o.kr,
+        owner: o.owner,
+        companyKR: o.companyKR,
+        start: o.start,
+        target: o.target,
+        current: o.current,
+        progress: o.pct + "%",
+        status: o.status,
+        wow: o.wow || "—",
+        weeklyUpdate: o.update || "—",
+        lastCheckin: latest ? latest.date : "—",
+        lastCheckinUpdate: latest ? latest.update : "—",
+        lastCheckinBlocker: latest ? (latest.blocker || "—") : "—",
+        lastCheckinNextWeek: latest ? (latest.nextWeek || "—") : "—",
+        checkinsCount: krCheckins.length,
+      };
+    });
+
+  const STATUS_ORDER = ["Off Track", "At Risk", "On Track", "Completed", "Not Started"];
+  const sorted = [...rows].sort((a, b) => {
+    const deptDiff = a.dept.localeCompare(b.dept);
+    if (deptDiff !== 0) return deptDiff;
+    return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+  });
+
+  function escapeCSV(val) {
+    if (val === null || val === undefined) return "";
+    const str = String(val).replace(/"/g, '""');
+    return str.includes(",") || str.includes("\n") || str.includes('"') ? `"${str}"` : str;
+  }
+
+  function exportCSV() {
+    const headers = [
+      "Week of", "Department", "Department Objective", "Key Result", "Owner",
+      "Company KR Alignment", "Start Value", "Target Value", "Current Value",
+      "Progress %", "Status", "WoW Change", "Weekly Update / Notes",
+      "Last Check-in Date", "Check-in Update", "Check-in Blockers",
+      "Check-in Next Week Plan", "Total Check-ins"
+    ];
+
+    const csvRows = [
+      headers.map(escapeCSV).join(","),
+      ...sorted.map(r => [
+        weekOf, r.dept, r.objective, r.kr, r.owner,
+        r.companyKR, r.start, r.target, r.current,
+        r.progress, r.status, r.wow, r.weeklyUpdate,
+        r.lastCheckin, r.lastCheckinUpdate, r.lastCheckinBlocker,
+        r.lastCheckinNextWeek, r.checkinsCount
+      ].map(escapeCSV).join(","))
+    ];
+
+    const csv = csvRows.join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `amenitiz-okr-weekly-report-${weekOf}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+    setTimeout(() => setExported(false), 3000);
+  }
+
+  const sel = { padding:"7px 12px", borderRadius:8, border:`1px solid ${A.gray300}`, fontSize:12, fontFamily:FONT, background:A.white, outline:"none", color:A.black, cursor:"pointer" };
+
+  // Summary stats
+  const total = sorted.length;
+  const byStatus = STATUS_ORDER.map(s => ({ status:s, count:sorted.filter(r=>r.status===s).length })).filter(x=>x.count>0);
+  const noCheckin = sorted.filter(r => r.lastCheckin === "—").length;
+  const avgPct = total ? Math.round(sorted.reduce((a,r)=>a+parseInt(r.progress),0)/total) : 0;
+
+  return (
+    <div>
+      {/* Header controls */}
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+        <div>
+          <div style={{ fontSize:16, fontWeight:800, color:A.black, fontFamily:FONT }}>Weekly Report</div>
+          <div style={{ fontSize:12, color:A.gray400, fontFamily:FONT, marginTop:2 }}>Export all KR progress as a CSV — open directly in Google Sheets</div>
+        </div>
+        <div style={{ flex:1 }}/>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <label style={{ fontSize:11, color:A.gray500, fontFamily:FONT, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Week of</label>
+          <input type="date" value={weekOf} onChange={e=>setWeekOf(e.target.value)} style={{ ...sel, cursor:"text" }}/>
+        </div>
+        <select value={deptFilter} onChange={e=>setDeptFilter(e.target.value)} style={sel}>
+          <option value="">All departments</option>
+          {DEPARTMENTS.map(d=><option key={d}>{d}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={sel}>
+          <option value="">All statuses</option>
+          {STATUSES.map(s=><option key={s}>{s}</option>)}
+        </select>
+        <button onClick={exportCSV} style={{ padding:"9px 20px", borderRadius:9, border:"none", background:exported?A.sageGreen:A.blue, color:A.white, fontSize:13, fontWeight:700, fontFamily:FONT, cursor:"pointer", display:"flex", alignItems:"center", gap:8, transition:"background 0.3s" }}>
+          {exported ? "✓ Downloaded!" : "⬇ Export CSV for Google Sheets"}
+        </button>
+      </div>
+
+      {/* How to import banner */}
+      <div style={{ background:A.blueLight, border:`1px solid ${A.blue}`, borderRadius:10, padding:"12px 16px", marginBottom:20, display:"flex", alignItems:"flex-start", gap:12 }}>
+        <span style={{ fontSize:18, flexShrink:0 }}>📋</span>
+        <div>
+          <div style={{ fontSize:12, fontWeight:700, color:A.blueDark, fontFamily:FONT, marginBottom:3 }}>How to open in Google Sheets</div>
+          <div style={{ fontSize:12, color:A.blueDark, fontFamily:FONT, lineHeight:1.6 }}>
+            1. Click "Export CSV" → a file downloads to your computer &nbsp;·&nbsp;
+            2. Open <strong>Google Sheets</strong> → File → Import &nbsp;·&nbsp;
+            3. Upload the CSV file → select <strong>"Comma"</strong> as separator &nbsp;·&nbsp;
+            4. Click Import data — all columns appear ready to use
+          </div>
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px,1fr))", gap:10, marginBottom:20 }}>
+        <div style={{ background:A.white, border:`1px solid ${A.gray300}`, borderRadius:10, padding:"12px 14px", borderTop:`3px solid ${A.blue}` }}>
+          <div style={{ fontSize:10, color:A.gray400, fontFamily:FONT, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Total KRs</div>
+          <div style={{ fontSize:24, fontWeight:800, color:A.blue, fontFamily:FONT }}>{total}</div>
+        </div>
+        <div style={{ background:A.white, border:`1px solid ${A.gray300}`, borderRadius:10, padding:"12px 14px", borderTop:`3px solid ${A.sageGreen}` }}>
+          <div style={{ fontSize:10, color:A.gray400, fontFamily:FONT, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Avg Progress</div>
+          <div style={{ fontSize:24, fontWeight:800, color:A.sageGreen, fontFamily:FONT }}>{avgPct}%</div>
+        </div>
+        {byStatus.map(s => {
+          const cfg = STATUS_CFG[s.status] || STATUS_CFG["Not Started"];
+          return (
+            <div key={s.status} style={{ background:A.white, border:`1px solid ${A.gray300}`, borderRadius:10, padding:"12px 14px", borderTop:`3px solid ${cfg.dot}` }}>
+              <div style={{ fontSize:10, color:A.gray400, fontFamily:FONT, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>{s.status}</div>
+              <div style={{ fontSize:24, fontWeight:800, color:cfg.dot, fontFamily:FONT }}>{s.count}</div>
+            </div>
+          );
+        })}
+        <div style={{ background:A.white, border:`1px solid ${A.gray300}`, borderRadius:10, padding:"12px 14px", borderTop:`3px solid ${A.copper}` }}>
+          <div style={{ fontSize:10, color:A.gray400, fontFamily:FONT, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>No Check-in</div>
+          <div style={{ fontSize:24, fontWeight:800, color:A.copper, fontFamily:FONT }}>{noCheckin}</div>
+        </div>
+      </div>
+
+      {/* Preview table */}
+      <Card style={{ padding:0, overflow:"hidden" }}>
+        <div style={{ padding:"14px 18px", borderBottom:`1px solid ${A.gray200}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ fontSize:13, fontWeight:700, color:A.black, fontFamily:FONT }}>Preview — {sorted.length} rows</div>
+          <div style={{ fontSize:11, color:A.gray400, fontFamily:FONT }}>Sorted by department, then status (worst first)</div>
+        </div>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11, fontFamily:FONT }}>
+            <thead>
+              <tr style={{ background:A.gray100, borderBottom:`1px solid ${A.gray300}` }}>
+                {["Department","Key Result","Owner","Progress","Status","Current → Target","WoW","Last Check-in","Weekly Update","Blockers"].map(h=>(
+                  <th key={h} style={{ padding:"9px 12px", textAlign:"left", fontSize:10, fontWeight:700, color:A.gray500, textTransform:"uppercase", letterSpacing:"0.07em", whiteSpace:"nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r, i) => {
+                const cfg = STATUS_CFG[r.status] || STATUS_CFG["Not Started"];
+                const prevDept = i > 0 ? sorted[i-1].dept : null;
+                const isNewDept = r.dept !== prevDept;
+                return (
+                  <>
+                    {isNewDept && (
+                      <tr key={`dept-${r.dept}`}>
+                        <td colSpan={10} style={{ padding:"8px 12px 4px", fontSize:10, fontWeight:800, color:A.blue, textTransform:"uppercase", letterSpacing:"0.1em", background:A.blueLight, borderBottom:`1px solid ${A.gray200}` }}>
+                          {r.dept}
+                        </td>
+                      </tr>
+                    )}
+                    <tr key={r.kr + i} style={{ borderBottom:`1px solid ${A.gray200}`, background:i%2===0?A.white:"#FAFAFD" }}>
+                      <td style={{ padding:"9px 12px", color:A.gray500, fontSize:10, fontWeight:600, whiteSpace:"nowrap" }}>{r.dept}</td>
+                      <td style={{ padding:"9px 12px", color:A.black, fontWeight:500, maxWidth:220, lineHeight:1.4 }}>{r.kr}</td>
+                      <td style={{ padding:"9px 12px", color:A.gray700, whiteSpace:"nowrap" }}>{r.owner}</td>
+                      <td style={{ padding:"9px 12px", whiteSpace:"nowrap" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <div style={{ width:40, height:4, background:A.gray200, borderRadius:2, overflow:"hidden" }}>
+                            <div style={{ width:`${parseInt(r.progress)}%`, height:"100%", background:cfg.dot, borderRadius:2 }}/>
+                          </div>
+                          <span style={{ fontWeight:700, color:cfg.dot }}>{r.progress}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:"9px 12px" }}>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"2px 8px", borderRadius:20, fontSize:10, fontWeight:700, background:cfg.bg, color:cfg.color, whiteSpace:"nowrap" }}>
+                          <span style={{ width:4, height:4, borderRadius:"50%", background:cfg.dot }}/>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td style={{ padding:"9px 12px", color:A.gray500, whiteSpace:"nowrap", fontSize:10 }}>{r.current} → {r.target}</td>
+                      <td style={{ padding:"9px 12px", color: r.wow !== "—" && r.wow.startsWith("+") ? A.sageGreen : r.wow !== "—" ? A.copper : A.gray400, fontWeight:700, whiteSpace:"nowrap" }}>{r.wow}</td>
+                      <td style={{ padding:"9px 12px", color:r.lastCheckin==="—"?A.copper:A.gray500, whiteSpace:"nowrap", fontWeight:r.lastCheckin==="—"?700:400 }}>{r.lastCheckin}</td>
+                      <td style={{ padding:"9px 12px", color:A.gray700, maxWidth:200, lineHeight:1.4 }}>
+                        {r.lastCheckinUpdate !== "—" ? r.lastCheckinUpdate.slice(0,80) + (r.lastCheckinUpdate.length>80?"…":"") : <span style={{ color:A.gray300 }}>—</span>}
+                      </td>
+                      <td style={{ padding:"9px 12px", color:r.lastCheckinBlocker!=="—"?A.copper:A.gray300, maxWidth:160, lineHeight:1.4 }}>
+                        {r.lastCheckinBlocker !== "—" ? r.lastCheckinBlocker.slice(0,60) + (r.lastCheckinBlocker.length>60?"…":"") : "—"}
+                      </td>
+                    </tr>
+                  </>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <div style={{ marginTop:12, fontSize:11, color:A.gray400, fontFamily:FONT, textAlign:"right" }}>
+        The exported CSV contains all columns including Company KR alignment, Department Objective, Start value, Target value, Next Week Plan and full untruncated text.
+      </div>
+    </div>
+  );
+}
+
 // ─── Glossary ─────────────────────────────────────────────────────────────────
 const GLOSSARY_DATA = {
   shared: {
@@ -1412,6 +1639,7 @@ const VIEWS = [
   { id:"alignment", label:"Alignment", icon:"🔗" },
   { id:"checkins",  label:"Check-ins", icon:"💬" },
   { id:"list",      label:"All KRs",   icon:"📋" },
+  { id:"report",    label:"Report",    icon:"📤" },
 ];
 
 const PASSWORD = "amenitiz2025";
@@ -1552,6 +1780,7 @@ export default function App() {
         {view==="alignment" && <AlignmentView okrs={okrs}/>}
         {view==="checkins"  && <CheckIns okrs={okrs} checkins={checkins} onAddCheckin={addCheckin}/>}
         {view==="list"      && <KRList okrs={okrs} onEdit={setEditing}/>}
+        {view==="report"    && <WeeklyReport okrs={okrs} checkins={checkins}/>}
         <Glossary currentView={view} />
       </main>
 
